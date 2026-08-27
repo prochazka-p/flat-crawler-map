@@ -743,19 +743,19 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
   .legend-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 8px; flex: none; }
   .legend-row { font-size: 13px; display: flex; align-items: center; margin-bottom: 6px; }
+  .legend-dot[data-category="new"] { background: #c62828; }
   .legend-dot[data-category="brick"] { background: #a8522f; }
   .legend-dot[data-category="new_build"] { background: #2f6fa6; }
-  .legend-dot[data-category="cooperative"] { background: #b9822a; }
   .legend-dot[data-category="unknown"] { background: #7c8985; }
   @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .legend-dot[data-category="new"] { background: #ff6b6b; }
     :root:not([data-theme="light"]) .legend-dot[data-category="brick"] { background: #e08a5f; }
     :root:not([data-theme="light"]) .legend-dot[data-category="new_build"] { background: #7fb2e0; }
-    :root:not([data-theme="light"]) .legend-dot[data-category="cooperative"] { background: #e0ac52; }
     :root:not([data-theme="light"]) .legend-dot[data-category="unknown"] { background: #9fada8; }
   }
+  :root[data-theme="dark"] .legend-dot[data-category="new"] { background: #ff6b6b; }
   :root[data-theme="dark"] .legend-dot[data-category="brick"] { background: #e08a5f; }
   :root[data-theme="dark"] .legend-dot[data-category="new_build"] { background: #7fb2e0; }
-  :root[data-theme="dark"] .legend-dot[data-category="cooperative"] { background: #e0ac52; }
   :root[data-theme="dark"] .legend-dot[data-category="unknown"] { background: #9fada8; }
 
   .district-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
@@ -787,7 +787,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .leaflet-popup-close-button { color: var(--muted) !important; }
 
   .filters-toggle {
-    display: none; position: fixed; top: 14px; left: 14px; z-index: 1000;
+    display: none; position: fixed; top: 14px; right: 14px; z-index: 1000;
     background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 22px;
     padding: 10px 18px; font-size: 13px; font-weight: 600; font-family: inherit;
     box-shadow: 0 2px 10px var(--shadow);
@@ -830,7 +830,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <div id="sidebar">
     <button class="sidebar-close" id="sidebar-close" aria-label="Close filters">&times;</button>
     <h1>Prague Flats</h1>
-    <div class="meta">Updated 2026-08-26 17:35 &middot; refreshes every 6h</div>
+    <div class="meta">Updated 2026-08-27 09:54 &middot; refreshes every 6h</div>
 
     <div class="stat">
       <p id="count" class="num">0</p>
@@ -839,7 +839,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
     <div class="section">
       <h2>Legend</h2>
-      <div class="legend-row"><span class="legend-dot" data-category="brick"></span>Brick (cihlová)</div><div class="legend-row"><span class="legend-dot" data-category="new_build"></span>New build</div><div class="legend-row"><span class="legend-dot" data-category="cooperative"></span>Družstevní</div><div class="legend-row"><span class="legend-dot" data-category="unknown"></span>Unknown material</div>
+      <div class="legend-row"><span class="legend-dot" data-category="new"></span>New today</div><div class="legend-row"><span class="legend-dot" data-category="brick"></span>Brick (cihlová)</div><div class="legend-row"><span class="legend-dot" data-category="new_build"></span>New build</div><div class="legend-row"><span class="legend-dot" data-category="unknown"></span>Unknown material</div>
     </div>
 
     <div class="section">
@@ -906,7 +906,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
-const CATEGORY_STYLE = {"brick": {"light": "#a8522f", "dark": "#e08a5f"}, "new_build": {"light": "#2f6fa6", "dark": "#7fb2e0"}, "cooperative": {"light": "#b9822a", "dark": "#e0ac52"}, "unknown": {"light": "#7c8985", "dark": "#9fada8"}};
+const CATEGORY_STYLE = {"new": {"light": "#c62828", "dark": "#ff6b6b"}, "brick": {"light": "#a8522f", "dark": "#e08a5f"}, "new_build": {"light": "#2f6fa6", "dark": "#7fb2e0"}, "unknown": {"light": "#7c8985", "dark": "#9fada8"}};
 const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 function categoryColor(cat) {
   const style = CATEGORY_STYLE[cat] || CATEGORY_STYLE.unknown;
@@ -915,13 +915,18 @@ function categoryColor(cat) {
   return dark ? style.dark : style.light;
 }
 
-function categoryForListing(l) {
+const TODAY_STR = '2026-08-27';
+
+function materialCategory(l) {
   if (l.listing_type === 'new_build') return 'new_build';
   const material = (l.material || '').toLowerCase();
   if (material.includes('cihl')) return 'brick';
-  const ownership = (l.ownership || '').toLowerCase();
-  if (ownership.includes('družst')) return 'cooperative';
   return 'unknown';
+}
+
+function categoryForListing(l) {
+  if (l.date_first_seen === TODAY_STR) return 'new';
+  return materialCategory(l);
 }
 
 function districtNumber(d) {
@@ -975,7 +980,7 @@ function passesFilters(l, f) {
   if (dn !== null && !f.districts.has(dn)) return false;
   if (l.price !== null && l.price > f.maxPrice) return false;
   if (l.size !== null && l.size < f.minSize) return false;
-  if (f.material === 'brick' && categoryForListing(l) !== 'brick') return false;
+  if (f.material === 'brick' && materialCategory(l) !== 'brick') return false;
   if (f.type !== 'all' && l.listing_type !== f.type) return false;
   return true;
 }
