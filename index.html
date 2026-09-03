@@ -742,18 +742,19 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .section h2 { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; }
 
   .legend-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 8px; flex: none; }
-  .legend-row { font-size: 13px; display: flex; align-items: center; margin-bottom: 6px; }
-  .legend-dot[data-category="new"] { background: #c62828; }
+  .legend-row { font-size: 13px; display: flex; align-items: center; margin-bottom: 6px; cursor: pointer; }
+  .legend-row input { accent-color: var(--accent); width: 15px; height: 15px; margin-right: 8px; flex: none; }
+  .legend-dot[data-category="new"] { background: #8b0000; }
   .legend-dot[data-category="brick"] { background: #a8522f; }
   .legend-dot[data-category="new_build"] { background: #2f6fa6; }
   .legend-dot[data-category="unknown"] { background: #7c8985; }
   @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .legend-dot[data-category="new"] { background: #ff6b6b; }
+    :root:not([data-theme="light"]) .legend-dot[data-category="new"] { background: #ff3b30; }
     :root:not([data-theme="light"]) .legend-dot[data-category="brick"] { background: #e08a5f; }
     :root:not([data-theme="light"]) .legend-dot[data-category="new_build"] { background: #7fb2e0; }
     :root:not([data-theme="light"]) .legend-dot[data-category="unknown"] { background: #9fada8; }
   }
-  :root[data-theme="dark"] .legend-dot[data-category="new"] { background: #ff6b6b; }
+  :root[data-theme="dark"] .legend-dot[data-category="new"] { background: #ff3b30; }
   :root[data-theme="dark"] .legend-dot[data-category="brick"] { background: #e08a5f; }
   :root[data-theme="dark"] .legend-dot[data-category="new_build"] { background: #7fb2e0; }
   :root[data-theme="dark"] .legend-dot[data-category="unknown"] { background: #9fada8; }
@@ -830,7 +831,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <div id="sidebar">
     <button class="sidebar-close" id="sidebar-close" aria-label="Close filters">&times;</button>
     <h1>Prague Flats</h1>
-    <div class="meta">Updated 2026-09-02 17:07 &middot; refreshes every 6h</div>
+    <div class="meta">Updated 2026-09-03 05:26 &middot; refreshes every 6h</div>
 
     <div class="stat">
       <p id="count" class="num">0</p>
@@ -839,7 +840,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
     <div class="section">
       <h2>Legend</h2>
-      <div class="legend-row"><span class="legend-dot" data-category="new"></span>New today</div><div class="legend-row"><span class="legend-dot" data-category="brick"></span>Brick (cihlová)</div><div class="legend-row"><span class="legend-dot" data-category="new_build"></span>New build</div><div class="legend-row"><span class="legend-dot" data-category="unknown"></span>Unknown material</div>
+      <label class="legend-row"><input type="checkbox" class="category-check" value="new" checked><span class="legend-dot" data-category="new"></span>New today</label><label class="legend-row"><input type="checkbox" class="category-check" value="brick" checked><span class="legend-dot" data-category="brick"></span>Brick (cihlová)</label><label class="legend-row"><input type="checkbox" class="category-check" value="new_build" checked><span class="legend-dot" data-category="new_build"></span>New build</label><label class="legend-row"><input type="checkbox" class="category-check" value="unknown" checked><span class="legend-dot" data-category="unknown"></span>Unknown material</label>
     </div>
 
     <div class="section">
@@ -848,9 +849,14 @@ svg.leaflet-image-layer.leaflet-interactive path {
     </div>
 
     <div class="section">
+      <h2>Floor</h2>
+      <div class="district-grid" id="floor-checks"></div>
+    </div>
+
+    <div class="section">
       <h2>Max price</h2>
       <div class="slider-row"><span>Up to</span><span id="price-value" class="num"></span></div>
-      <input type="range" id="price-slider" min="0" max="8500000" step="100000">
+      <input type="range" id="price-slider" min="0" max="9000000" step="100000">
     </div>
 
     <div class="section">
@@ -906,7 +912,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
-const CATEGORY_STYLE = {"new": {"light": "#c62828", "dark": "#ff6b6b"}, "brick": {"light": "#a8522f", "dark": "#e08a5f"}, "new_build": {"light": "#2f6fa6", "dark": "#7fb2e0"}, "unknown": {"light": "#7c8985", "dark": "#9fada8"}};
+const CATEGORY_STYLE = {"new": {"light": "#8b0000", "dark": "#ff3b30"}, "brick": {"light": "#a8522f", "dark": "#e08a5f"}, "new_build": {"light": "#2f6fa6", "dark": "#7fb2e0"}, "unknown": {"light": "#7c8985", "dark": "#9fada8"}};
 const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 function categoryColor(cat) {
   const style = CATEGORY_STYLE[cat] || CATEGORY_STYLE.unknown;
@@ -915,7 +921,7 @@ function categoryColor(cat) {
   return dark ? style.dark : style.light;
 }
 
-const TODAY_STR = '2026-09-02';
+const TODAY_STR = '2026-09-03';
 
 function materialCategory(l) {
   if (l.listing_type === 'new_build') return 'new_build';
@@ -956,7 +962,15 @@ function popupHtml(l) {
   parts.push('<b>' + escapeHtml(l.title) + '</b>');
   parts.push('<span class="num">' + formatCzk(l.price) + '</span> CZK');
   if (l.size) parts.push('<span class="num">' + l.size + '</span> m&sup2;' + (l.price_per_m2 ? ' &middot; <span class="num">' + formatCzk(l.price_per_m2) + '</span> CZK/m&sup2;' : ''));
-  parts.push(escapeHtml(l.district || 'Unknown district'));
+  const location = l.street ? (l.street + ', ' + (l.district || 'Unknown district')) : (l.district || 'Unknown district');
+  parts.push(escapeHtml(location));
+  if (l.floor !== null && l.floor !== undefined) {
+    let floorText = l.floor === 0 ? 'Ground floor' : ('Floor ' + l.floor);
+    if (l.total_floors !== null && l.total_floors !== undefined) {
+      floorText += ' of ' + l.total_floors + (l.floor === l.total_floors ? ' (top floor)' : '');
+    }
+    parts.push(floorText);
+  }
   parts.push('Material: ' + escapeHtml(l.material || 'unknown'));
   parts.push('Ownership: ' + escapeHtml(l.ownership || 'unknown'));
   parts.push(l.listing_type === 'new_build' ? 'New build' : 'Resale');
@@ -964,10 +978,21 @@ function popupHtml(l) {
   return parts.join('<br>');
 }
 
+function floorCategoriesForListing(l) {
+  if (l.floor === null || l.floor === undefined) return null;
+  const cats = [String(l.floor)];
+  if (l.total_floors !== null && l.total_floors !== undefined && l.floor === l.total_floors) cats.push('top');
+  return cats;
+}
+
 function currentFilters() {
   const checked = Array.from(document.querySelectorAll('.district-check:checked')).map(el => parseInt(el.value, 10));
+  const categories = new Set(Array.from(document.querySelectorAll('.category-check:checked')).map(el => el.value));
+  const floors = new Set(Array.from(document.querySelectorAll('.floor-check:checked')).map(el => el.value));
   return {
     districts: new Set(checked),
+    categories,
+    floors,
     maxPrice: parseInt(document.getElementById('price-slider').value, 10),
     minSize: parseInt(document.getElementById('size-slider').value, 10),
     material: document.getElementById('material-select').value,
@@ -978,6 +1003,9 @@ function currentFilters() {
 function passesFilters(l, f) {
   const dn = districtNumber(l.district);
   if (dn !== null && !f.districts.has(dn)) return false;
+  if (!f.categories.has(categoryForListing(l))) return false;
+  const floorCats = floorCategoriesForListing(l);
+  if (floorCats !== null && !floorCats.some(c => f.floors.has(c))) return false;
   if (l.price !== null && l.price > f.maxPrice) return false;
   if (l.size !== null && l.size < f.minSize) return false;
   if (f.material === 'brick' && materialCategory(l) !== 'brick') return false;
@@ -1023,9 +1051,41 @@ function buildDistrictChecks() {
   });
 }
 
+function buildFloorChecks() {
+  const container = document.getElementById('floor-checks');
+  container.innerHTML = '';
+  const floors = new Set();
+  LISTINGS.forEach(l => { if (l.floor !== null && l.floor !== undefined) floors.add(l.floor); });
+  const sorted = Array.from(floors).sort((a, b) => a - b);
+  sorted.forEach(n => {
+    const label = document.createElement('label');
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.className = 'floor-check';
+    input.value = String(n);
+    input.checked = true;
+    input.addEventListener('change', render);
+    label.appendChild(input);
+    label.appendChild(document.createTextNode(n === 0 ? 'Ground' : String(n)));
+    container.appendChild(label);
+  });
+  const topLabel = document.createElement('label');
+  const topInput = document.createElement('input');
+  topInput.type = 'checkbox';
+  topInput.className = 'floor-check';
+  topInput.value = 'top';
+  topInput.checked = true;
+  topInput.addEventListener('change', render);
+  topLabel.appendChild(topInput);
+  topLabel.appendChild(document.createTextNode('Top floor'));
+  container.appendChild(topLabel);
+}
+
 function resetFilters() {
   document.querySelectorAll('.district-check').forEach(el => el.checked = true);
-  document.getElementById('price-slider').value = 8500000;
+  document.querySelectorAll('.category-check').forEach(el => el.checked = true);
+  document.querySelectorAll('.floor-check').forEach(el => el.checked = true);
+  document.getElementById('price-slider').value = 9000000;
   document.getElementById('size-slider').value = 30;
   document.getElementById('material-select').value = 'all';
   document.getElementById('type-select').value = 'all';
@@ -1039,10 +1099,11 @@ function updateSliderLabels() {
 }
 
 buildDistrictChecks();
-document.getElementById('price-slider').value = 8500000;
+document.getElementById('price-slider').value = 9000000;
 document.getElementById('size-slider').value = 30;
 updateSliderLabels();
 
+document.querySelectorAll('.category-check').forEach(el => el.addEventListener('change', render));
 document.getElementById('price-slider').addEventListener('input', () => { updateSliderLabels(); render(); });
 document.getElementById('size-slider').addEventListener('input', () => { updateSliderLabels(); render(); });
 document.getElementById('material-select').addEventListener('change', render);
@@ -1074,6 +1135,7 @@ fetch('listings.json')
     const unmappable = LISTINGS.filter(l => l.latitude == null || l.longitude == null).length;
     document.getElementById('unmappable-note').textContent =
       unmappable + " listing(s) in the database have no known coordinates and aren't shown on the map.";
+    buildFloorChecks();
     render();
   })
   .catch(err => {
