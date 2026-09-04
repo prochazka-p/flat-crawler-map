@@ -831,7 +831,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <div id="sidebar">
     <button class="sidebar-close" id="sidebar-close" aria-label="Close filters">&times;</button>
     <h1>Prague Flats</h1>
-    <div class="meta">Updated 2026-09-04 13:06 &middot; refreshes every 6h</div>
+    <div class="meta">Updated 2026-09-04 13:11 &middot; refreshes every 6h</div>
 
     <div class="stat">
       <p id="count" class="num">0</p>
@@ -1034,6 +1034,13 @@ function render() {
   document.getElementById('count').textContent = count;
 }
 
+function layoutInColumns(container, itemCount, columns) {
+  const rows = Math.max(1, Math.ceil(itemCount / columns));
+  container.style.gridAutoFlow = 'column';
+  container.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+  container.style.gridTemplateRows = `repeat(${rows}, auto)`;
+}
+
 function buildDistrictChecks() {
   const container = document.getElementById('district-checks');
   container.innerHTML = '';
@@ -1049,6 +1056,7 @@ function buildDistrictChecks() {
     label.appendChild(document.createTextNode('Praha ' + n));
     container.appendChild(label);
   });
+  layoutInColumns(container, ALL_DISTRICTS.length, 2);
 }
 
 function buildFloorChecks() {
@@ -1066,7 +1074,7 @@ function buildFloorChecks() {
     input.checked = true;
     input.addEventListener('change', render);
     label.appendChild(input);
-    label.appendChild(document.createTextNode(n === 0 ? 'Ground' : String(n)));
+    label.appendChild(document.createTextNode(String(n)));
     container.appendChild(label);
   });
   const topLabel = document.createElement('label');
@@ -1090,6 +1098,8 @@ function buildFloorChecks() {
   unknownLabel.appendChild(unknownInput);
   unknownLabel.appendChild(document.createTextNode('Unknown'));
   container.appendChild(unknownLabel);
+
+  layoutInColumns(container, sorted.length + 2, 2);
 }
 
 function resetFilters() {
