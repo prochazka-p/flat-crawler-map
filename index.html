@@ -831,7 +831,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <div id="sidebar">
     <button class="sidebar-close" id="sidebar-close" aria-label="Close filters">&times;</button>
     <h1>Prague Flats</h1>
-    <div class="meta">Updated 2026-09-04 12:57 &middot; refreshes every 6h</div>
+    <div class="meta">Updated 2026-09-04 13:06 &middot; refreshes every 6h</div>
 
     <div class="stat">
       <p id="count" class="num">0</p>
@@ -979,7 +979,7 @@ function popupHtml(l) {
 }
 
 function floorCategoriesForListing(l) {
-  if (l.floor === null || l.floor === undefined) return null;
+  if (l.floor === null || l.floor === undefined) return ['unknown'];
   const cats = [String(l.floor)];
   if (l.total_floors !== null && l.total_floors !== undefined && l.floor === l.total_floors) cats.push('top');
   return cats;
@@ -1005,7 +1005,7 @@ function passesFilters(l, f) {
   if (dn !== null && !f.districts.has(dn)) return false;
   if (!f.categories.has(categoryForListing(l))) return false;
   const floorCats = floorCategoriesForListing(l);
-  if (floorCats !== null && !floorCats.some(c => f.floors.has(c))) return false;
+  if (!floorCats.some(c => f.floors.has(c))) return false;
   if (l.price !== null && l.price > f.maxPrice) return false;
   if (l.size !== null && l.size < f.minSize) return false;
   if (f.material === 'brick' && materialCategory(l) !== 'brick') return false;
@@ -1079,6 +1079,17 @@ function buildFloorChecks() {
   topLabel.appendChild(topInput);
   topLabel.appendChild(document.createTextNode('Top floor'));
   container.appendChild(topLabel);
+
+  const unknownLabel = document.createElement('label');
+  const unknownInput = document.createElement('input');
+  unknownInput.type = 'checkbox';
+  unknownInput.className = 'floor-check';
+  unknownInput.value = 'unknown';
+  unknownInput.checked = true;
+  unknownInput.addEventListener('change', render);
+  unknownLabel.appendChild(unknownInput);
+  unknownLabel.appendChild(document.createTextNode('Unknown'));
+  container.appendChild(unknownLabel);
 }
 
 function resetFilters() {
