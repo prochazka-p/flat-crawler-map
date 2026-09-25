@@ -762,6 +762,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .district-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
   .district-grid label { font-size: 13px; display: flex; align-items: center; gap: 7px; cursor: pointer; }
   .district-grid input { accent-color: var(--accent); width: 16px; height: 16px; }
+  .top-only { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 7px; cursor: pointer; margin-bottom: 4px; }
+  .top-only input { accent-color: var(--accent); width: 16px; height: 16px; }
+  .top-only-note { font-size: 11px; color: var(--muted); margin: 0 0 10px 23px; line-height: 1.4; }
 
   .slider-row { font-size: 13px; margin-bottom: 6px; display: flex; justify-content: space-between; }
   .slider-row .num { color: var(--text); font-weight: 500; }
@@ -831,7 +834,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <div id="sidebar">
     <button class="sidebar-close" id="sidebar-close" aria-label="Close filters">&times;</button>
     <h1>Prague Flats</h1>
-    <div class="meta">Updated 2026-09-24 17:09 &middot; refreshes every 6h</div>
+    <div class="meta">Updated 2026-09-25 17:09 &middot; refreshes every 6h</div>
 
     <div class="stat">
       <p id="count" class="num">0</p>
@@ -850,6 +853,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
     <div class="section">
       <h2>Floor</h2>
+      <label class="top-only"><input type="checkbox" id="top-only">Top floor only</label>
+      <div class="top-only-note">Includes likely top floors: the building's floor count is missing but the ad text says so.</div>
       <div class="district-grid" id="floor-checks"></div>
     </div>
 
@@ -863,23 +868,6 @@ svg.leaflet-image-layer.leaflet-interactive path {
       <h2>Min size</h2>
       <div class="slider-row"><span>At least</span><span id="size-value" class="num"></span></div>
       <input type="range" id="size-slider" min="30" max="200" step="5">
-    </div>
-
-    <div class="section">
-      <h2>Material</h2>
-      <select id="material-select">
-        <option value="all">All</option>
-        <option value="brick">Brick only</option>
-      </select>
-    </div>
-
-    <div class="section">
-      <h2>Listing type</h2>
-      <select id="type-select">
-        <option value="all">All</option>
-        <option value="resale">Resale</option>
-        <option value="new_build">New build</option>
-      </select>
     </div>
 
     <button id="reset">Reset filters</button>
@@ -921,7 +909,7 @@ function categoryColor(cat) {
   return dark ? style.dark : style.light;
 }
 
-const TODAY_STR = '2026-09-24';
+const TODAY_STR = '2026-09-25';
 
 function materialCategory(l) {
   if (l.listing_type === 'new_build') return 'new_build';
@@ -971,6 +959,9 @@ function popupHtml(l) {
     }
     parts.push(floorText);
   }
+  if (topFloorStatus(l) === 'likely') {
+    parts.push('<b>Likely top floor</b> &ndash; ad says &ldquo;' + escapeHtml(l.top_floor_hint) + '&rdquo;');
+  }
   parts.push('Material: ' + escapeHtml(l.material || 'unknown'));
   parts.push('Ownership: ' + escapeHtml(l.ownership || 'unknown'));
   parts.push(l.listing_type === 'new_build' ? 'New build' : 'Resale');
@@ -980,9 +971,15 @@ function popupHtml(l) {
 
 function floorCategoriesForListing(l) {
   if (l.floor === null || l.floor === undefined) return ['unknown'];
-  const cats = [String(l.floor)];
-  if (l.total_floors !== null && l.total_floors !== undefined && l.floor === l.total_floors) cats.push('top');
-  return cats;
+  return [String(l.floor)];
+}
+
+// 'confirmed': floor equals the building's floor count; 'likely': that count
+// is missing (or disagrees) but the ad text reads as top floor (top_floor.py).
+function topFloorStatus(l) {
+  if (l.floor !== null && l.floor !== undefined && l.total_floors !== null && l.total_floors !== undefined && l.floor > 0 && l.floor >= l.total_floors) return 'confirmed';
+  if (l.top_floor_hint) return 'likely';
+  return null;
 }
 
 function currentFilters() {
@@ -995,8 +992,7 @@ function currentFilters() {
     floors,
     maxPrice: parseInt(document.getElementById('price-slider').value, 10),
     minSize: parseInt(document.getElementById('size-slider').value, 10),
-    material: document.getElementById('material-select').value,
-    type: document.getElementById('type-select').value,
+    topOnly: document.getElementById('top-only').checked,
   };
 }
 
@@ -1006,10 +1002,9 @@ function passesFilters(l, f) {
   if (!f.categories.has(categoryForListing(l))) return false;
   const floorCats = floorCategoriesForListing(l);
   if (!floorCats.some(c => f.floors.has(c))) return false;
+  if (f.topOnly && !topFloorStatus(l)) return false;
   if (l.price !== null && l.price > f.maxPrice) return false;
   if (l.size !== null && l.size < f.minSize) return false;
-  if (f.material === 'brick' && materialCategory(l) !== 'brick') return false;
-  if (f.type !== 'all' && l.listing_type !== f.type) return false;
   return true;
 }
 
@@ -1077,17 +1072,6 @@ function buildFloorChecks() {
     label.appendChild(document.createTextNode(String(n)));
     container.appendChild(label);
   });
-  const topLabel = document.createElement('label');
-  const topInput = document.createElement('input');
-  topInput.type = 'checkbox';
-  topInput.className = 'floor-check';
-  topInput.value = 'top';
-  topInput.checked = true;
-  topInput.addEventListener('change', render);
-  topLabel.appendChild(topInput);
-  topLabel.appendChild(document.createTextNode('Top floor'));
-  container.appendChild(topLabel);
-
   const unknownLabel = document.createElement('label');
   const unknownInput = document.createElement('input');
   unknownInput.type = 'checkbox';
@@ -1099,17 +1083,16 @@ function buildFloorChecks() {
   unknownLabel.appendChild(document.createTextNode('Unknown'));
   container.appendChild(unknownLabel);
 
-  layoutInColumns(container, sorted.length + 2, 2);
+  layoutInColumns(container, sorted.length + 1, 2);
 }
 
 function resetFilters() {
   document.querySelectorAll('.district-check').forEach(el => el.checked = true);
   document.querySelectorAll('.category-check').forEach(el => el.checked = true);
   document.querySelectorAll('.floor-check').forEach(el => el.checked = true);
+  document.getElementById('top-only').checked = false;
   document.getElementById('price-slider').value = 9000000;
   document.getElementById('size-slider').value = 30;
-  document.getElementById('material-select').value = 'all';
-  document.getElementById('type-select').value = 'all';
   updateSliderLabels();
   render();
 }
@@ -1127,8 +1110,7 @@ updateSliderLabels();
 document.querySelectorAll('.category-check').forEach(el => el.addEventListener('change', render));
 document.getElementById('price-slider').addEventListener('input', () => { updateSliderLabels(); render(); });
 document.getElementById('size-slider').addEventListener('input', () => { updateSliderLabels(); render(); });
-document.getElementById('material-select').addEventListener('change', render);
-document.getElementById('type-select').addEventListener('change', render);
+document.getElementById('top-only').addEventListener('change', render);
 document.getElementById('reset').addEventListener('click', resetFilters);
 
 function openSidebar() {
